@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timezone Setting Example</title>
+    <!-- Bootstrap CDN -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Timezone IP </h1>
+        <p id="timezone"></p>
+        <p id="ip"></p>
+
+        <button id="test-vpn" onclick="testVpn()">Test VPN</button>
+        <button id="log-connections" onclick="logConnections()">Log Connections</button>
+
+        <!-- Log connections table -->
+        <table id="log-table">
+            <thead>
+                <tr>
+                    <th>IP Address</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+        </table>
+
+        <script>
+            let logData = [];
+            let logIndex = 0;
+
+            // Set timezone using JavaScript
+            var tzCookie = document.cookie.indexOf('tz=') !== -1 ? `tz=${document.cookie.split('=')[1]}` : 'UTC';
+            var tz = new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+            if (tzCookie === 'UTC') {
+                document.cookie = `tz=${tz}; path=/`;
+            }
+
+            document.querySelector('#timezone').innerHTML = `Your timezone: ${tz}`;
+
+            function getVisitorIP() {
+                fetch('https://api.ipify.org')
+                    .then(response => response.text())
+                    .then(ip => {
+                        document.querySelector('#ip').innerHTML = `Your public IP: ${ip}`;
+                        logConnection(ip);
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+
+            getVisitorIP();
+
+            function testVpn() {
+                fetch('https://api.ipify.org')
+                    .then(response => response.text())
+                    .then(ip => {
+                        if (ip !== '127.0.0.1') { // 127.0.0.1 is the IP of a local machine
+                            document.querySelector('#ip').innerHTML = `Your public IP: ${ip}`;
+                        } else {
+                            document.querySelector('#ip').innerHTML = 'IP is not publicly accessible';
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+
+            function logConnections() {
+                let logHTML = '';
+                for (let i = 0; i < logData.length; i++) {
+                    logHTML += `
+                        <tr>
+                            <td>${logData[i].ip}</td>
+                            <td>${new Date(logData[i].time).toLocaleString()}</td>
+                        </tr>
+                    `;
+                }
+                document.getElementById('log-body').innerHTML = logHTML;
+            }
+
+            function logConnection(ip) {
+                let now = new Date().toISOString();
+                logData.push({ ip, time: now });
+                logIndex++;
+                localStorage.setItem('logData', JSON.stringify(logData));
+            }
+
+            // Check if data is already stored in LocalStorage
+            if (localStorage.getItem('logData')) {
+                logData = JSON.parse(localStorage.getItem('logData'));
+            }
+        </script>
+
+        <script>
+            function checkLog() {
+                let now = new Date().toISOString();
+                if (new RegExp(now.replace(/[-:.]/g, '') + '[0-9]{6}-[0-9]{3}-[0-9]{2}-[0-9]{2}').toString()).test(localStorage.getItem('logData')) {
+                    logConnections();
+                    setTimeout(checkLog, 30000); // Check every 30 seconds
+                }
+            }
+
+            checkLog();
+        </script>
+    </div>
+
+</body>
+</html>
